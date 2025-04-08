@@ -7,7 +7,7 @@
 #  http://www.apache.org/licenses/LICENSE-2.0
 
 # Reusable workflow to update Dell packages to the latest released version on CSM based projects
-name: Update Dell Packages to Latest Released
+name: UBI Image update
 
 on:
   # Can be manually triggered
@@ -34,7 +34,6 @@ jobs:
           run: |
             digest=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi-micro:latest | jq -r '.Digest')
             echo "Digest: $digest"
-            echo "::set-output name=digest::$digest"
   
         - name: Print Digest
           run: echo "The latest UBI micro image digest is ${{ steps.get-digest.outputs.digest }}"
