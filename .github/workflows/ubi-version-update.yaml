@@ -13,30 +13,81 @@ on:
   # Can be manually triggered
   workflow_dispatch:
 
-jobs:
-  update-dependencies:
-    runs-on: ubuntu-latest
-    steps:
+# jobs:
+#   update-dependencies:
+#     runs-on: ubuntu-latest
+#     steps:
 
-        - name: Checkout repository
-          uses: actions/checkout@v2
+#         - name: Checkout repository
+#           uses: actions/checkout@v2
   
-        - name: Install skopeo
-          run: |
-            if ! command -v skopeo &> /dev/null
-            then
-                sudo apt-get update
-                sudo apt-get install -y skopeo
-            fi
+#         - name: Install skopeo
+#           run: |
+#             if ! command -v skopeo &> /dev/null
+#             then
+#                 sudo apt-get update
+#                 sudo apt-get install -y skopeo
+#             fi
         
-        - name: Fetch skopeo version
-          run: skopeo --version
+#         - name: Fetch skopeo version
+#           run: skopeo --version
   
-        - name: Get UBI Micro Image Digest
-          id: get-digest
-          run: |
-            digest=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi-micro:latest | jq -r '.Digest')
-            echo "Digest: $digest"
+#         - name: Get UBI Micro Image Digest
+#           id: get-digest
+#           run: |
+#             digest=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi-micro:latest | jq -r '.Digest')
+#             echo "Digest: $digest"
   
-        - name: Print Digest
-          run: echo "The latest UBI micro image digest is ${{ steps.get-digest.outputs.digest }}"
+#         - name: Print Digest
+#           run: echo "The latest UBI micro image digest is ${{ steps.get-digest.outputs.digest }}"
+
+jobs:
+  update-sha:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check if Skopeo is installed
+      id: check-skopeo
+      run: |
+        if ! command -v skopeo &> /dev/null; then
+          echo "Skopeo not found, installing..."
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+        else
+          echo "Skopeo is already installed"
+        fi
+
+    - name: Fetch latest UBI9 micro image SHA
+      id: fetch-sha
+      run: |
+        latest_sha=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi-micro:latest | jq -r '.Digest')
+        echo "latest_sha=$latest_sha" >> $GITHUB_ENV
+
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        repository: panigs7/csm
+        token: ${{ secrets.COMMON_GITHUB_ACTIONS_PAT }}
+        path: csm-repo
+
+    - name: Compare and update SHA in csm-common.mk
+      id: update-sha
+      run: |
+        current_sha=$(grep 'UBI_BASEIMAGE=' csm-repo/config/csm-common.mk | cut -d'@' -f2)
+        latest_sha=${{ env.latest_sha }}
+        if [ "$current_sha" != "$latest_sha" ]; then
+          echo "SHA mismatch, updating..."
+          sed -i "s|UBI_BASEIMAGE=.*|UBI_BASEIMAGE=registry.access.redhat.com/ubi9/ubi-micro@$latest_sha|" csm-repo/config/csm-common.mk
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          cd csm-repo
+          git add config/csm-common.mk
+          git commit -m "Update UBI9 micro image SHA to $latest_sha"
+          git push
+        else
+          echo "SHA is up-to-date"
+        fi
+
