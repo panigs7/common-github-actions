@@ -86,7 +86,7 @@ jobs:
       uses: peter-evans/create-pull-request@v7
       with:
         token: ${{ steps.generate-token.outputs.token }}
-        branch: "update-dependencies-to-latest-commits"
+        branch: "update-ubi-image-to-latest"
         commit-message: "Update UBI Image to latest "
         title: "Update UBI Image to latest"
         body: |
