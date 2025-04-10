@@ -75,6 +75,14 @@ jobs:
         latest_sha=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi-micro:latest | jq -r '.Digest')
         echo "latest_sha=$latest_sha" >> $GITHUB_ENV
 
+        # Get the tag and store it in the GitHub environment
+        tag=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.version')
+        echo "tag=$tag" >> $GITHUB_ENV
+
+        # Get the release and store it in the GitHub environment
+        release=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.release')
+        echo "release=$release" >> $GITHUB_ENV
+
     - name: Checkout target repository
       uses: actions/checkout@v4
       with:
@@ -87,12 +95,6 @@ jobs:
       run: |
         current_sha=$(grep 'UBI_BASEIMAGE=' csm-repo/config/csm-common.mk | cut -d'@' -f2)
         latest_sha=${{ env.latest_sha }}
-        tag=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.version')
-        echo "tag=$tag" >> $GITHUB_ENV
-        tag=$tag
-        release=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.release')
-        echo "release=$release" >> $GITHUB_ENV
-        release=${{ env.release }}
 
         if [ "$current_sha" != "$latest_sha" ]; then
           echo "SHA mismatch, updating..."
