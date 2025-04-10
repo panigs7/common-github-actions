@@ -75,7 +75,12 @@ check_coverage() {
 }
 
 # Find all directories containing go.mod files
-submodules=$(find . -name 'go.mod' -exec dirname {} \;)
+if [ -n "$EXCLUDE_DIRECTORIES" ]; then
+    EXCLUDED_PATHS=$(echo "$EXCLUDE_DIRECTORIES" | sed 's/|/\/\*\" -not -path \"/g' | sed 's/^/-not -path \"/' | sed 's/$/\/\*\"/')
+    submodules=$(eval find . -name 'go.mod' "$EXCLUDED_PATHS" -exec dirname {} +)
+else
+    submodules=$(find . -name 'go.mod' -exec dirname {} +)
+fi
 
 # Submodules may not exist if testing in a specific TEST_FOLDER
 if [[ -z "$submodules" ]]; then
@@ -89,10 +94,16 @@ for submodule in $submodules; do
 
   # Get the list of packages
   if [[ -n $EXCLUDE_DIRECTORIES ]]; then
-    echo "excluding the following directories: $EXCLUDE_DIRECTORIES"
+    echo "Excluding the following directories: $EXCLUDE_DIRECTORIES"
     packages=$(go list ./... | grep -vE $EXCLUDE_DIRECTORIES)
   else
     packages=$(go list ./...)
+  fi
+
+  # Check go list for errors, including "go mod tidy" errors
+  if [ $? -ne 0 ]; then
+    echo "Please review failure in $submodule"
+    exit 1
   fi
 
   for package in $packages; do
@@ -118,7 +129,7 @@ for submodule in $submodules; do
     echo "$output"
 
     if [ "${TEST_RETURN_CODE}" != "0" ]; then
-      echo "test failed for package $package with return code $TEST_RETURN_CODE, not proceeding with coverage check"
+      echo "Test failed for package $package with return code $TEST_RETURN_CODE, not proceeding with coverage check"
       failed_packages+=("$package")
       FAIL=1
     fi
