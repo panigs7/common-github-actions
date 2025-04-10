@@ -11,7 +11,7 @@ name: UBI Image update
 
 on:
   # Can be manually triggered
-  workflow_dispatch:
+  workflow_call:
 
 # jobs:
 #   update-dependencies:
