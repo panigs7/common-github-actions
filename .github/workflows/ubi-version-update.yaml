@@ -78,10 +78,11 @@ jobs:
       run: |
         current_sha=$(grep 'UBI_BASEIMAGE=' csm-repo/config/csm-common.mk | cut -d'@' -f2)
         latest_sha=${{ env.latest_sha }}
-        tag=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.version)
+        tag=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.version')
         echo "tag=$tag" >> $GITHUB_ENV
-        tag=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.release)
+        release=$(skopeo inspect docker://registry.access.redhat.com/ubi9/ubi:latest | jq -r '.Labels.release')
         echo "release=$release" >> $GITHUB_ENV
+
         if [ "$current_sha" != "$latest_sha" ]; then
           echo "SHA mismatch, updating..."
           sed -i "s|UBI_BASEIMAGE=.*|UBI_BASEIMAGE=registry.access.redhat.com/ubi9/ubi-micro@$latest_sha|" csm-repo/config/csm-common.mk
@@ -95,6 +96,7 @@ jobs:
         else
           echo "SHA is up-to-date"
         fi
+
  # Needed for signing commits using Github App tokens
     # See: https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#commit-signing
     # - uses: actions/create-github-app-token@v2.0.2
